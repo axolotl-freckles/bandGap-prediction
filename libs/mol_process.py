@@ -41,6 +41,64 @@ def space_layout(
 		return out, n_mol
 	return out
 
+class MolDataset():
+	def __init__(
+		self,
+		root_dir     :str,
+		element_dict :dict,
+		_range       :float,
+		offset       :float       =0.0,
+		n_bins       :int         =30,
+		normalize_val:float       =1.0,
+		device       :torch.device=None
+	) -> None:
+		self.dir      = root_dir
+		self.mf_names = glob.glob(f'{self.dir}/*.xyz')
+		self.tf_names = glob.glob(f'{self.dir}/*.XV')
+		self.len      = len(self.mf_names)
+
+		self.e_dict   = element_dict
+		self.range    = _range
+		self.offset   = offset
+		self.n_bins   = n_bins
+		self.n_val    = normalize_val
+
+		self.device = device
+		if self.device is None:
+			self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+		pass
+
+	def __len__(self) -> int:
+		return self.len
+	
+	def __getitem__(self, idx):
+		data = torch.zeros(
+			(self.n_bins, self.n_bins, self.n_bins)
+		).to(self.device)
+		with open(self.mf_names[idx], 'r') as coor_file:
+			space_layout(
+				coor_file   =coor_file,
+				element_dict=self.e_dict,
+				n_bins      =self.n_bins,
+				range_      =self.range,
+				offset      =self.offset,
+				out         =data
+			)
+			pass
+		data /= self.n_val
+
+		target = 0.0
+		with open(self.tf_names[idx], 'r') as target_file:
+			target = float(target_file.readline().split()[0])
+			pass
+
+		return data, target
+	
+	def __iter__(self):
+		for i in range(self.len):
+			yield self.__getitem__(i)
+# class MolDataset
+
 class MolDataLoader():
 	def __init__(
 		self,
