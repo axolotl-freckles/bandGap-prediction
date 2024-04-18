@@ -1,0 +1,9 @@
+*.pdf
+*.zip
+*.lnk
+
+desktop.ini
+*/desktop.ini
+*/*/desktop.ini
+
+datasets/
