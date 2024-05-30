@@ -21,10 +21,11 @@ class LSTM_MOL(nn.Module):
 			self.fc = nn.Sequential(*layers)
 
 	def forward(self, x:torch.Tensor):
-		device = x.get_device()
-		h = torch.zeros(self.h_size, device=device)
-		c = torch.zeros(self.h_size, device=device)
-		for i in range(x.size()[0]):
-			h, c = self.lstm_cell(x[:,i], (h, c))
+		device   = x.get_device()
+		batch_sz = x.size()[0]
+		h = torch.zeros(batch_sz, self.h_size, device=device)
+		c = torch.zeros(batch_sz, self.h_size, device=device)
+		for i in range(x.size()[1]):
+			h, c = self.lstm_cell(x[:,i].view(batch_sz, 1), (h, c))
 		out = self.fc(h)
 		return out
