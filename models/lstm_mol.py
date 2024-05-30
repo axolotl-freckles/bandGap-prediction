@@ -1,23 +1,30 @@
+from typing import Tuple
+from typing import List
+
 import torch
 import torch.nn as nn
 
 class LSTM_MOL(nn.Module):
-	def __init__(self, h_size:int, fc_layers_config:list=None):
+	def __init__(self,
+		h_size:int,
+		fc_layers_config:List[Tuple[any, int]]=None
+	):
 		super(LSTM_MOL, self).__init__()
-		self.h_size    = h_size
-		self.lstm_cell = nn.LSTMCell(1, h_size)
+		self.h_size       = h_size
+		self.lstm_cell    = nn.LSTMCell(1, h_size)
 
 		if fc_layers_config is None:
-			self.fc = nn.Linear(h_size, 1)
+			self.fc = nn.Sequential(nn.ReLU(), nn.Linear(h_size, 1))
 		else:
 			layers = list()
 			last_size = h_size
 			n_layers  = len(fc_layers_config)
 			for i, layer_config in enumerate(fc_layers_config):
-				layers.append( nn.Linear(last_size, layer_config) )
-				if i < n_layers - 1:
-					layers.append( nn.ReLU() )
-				last_size = layer_config
+				layer_activation, layer_size = layer_config
+
+				layers.append( layer_activation() )
+				layers.append( nn.Linear(last_size, layer_size) )
+				last_size = layer_size
 			self.fc = nn.Sequential(*layers)
 
 	def forward(self, x:torch.Tensor):

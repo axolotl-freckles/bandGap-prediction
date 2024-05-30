@@ -1,5 +1,6 @@
 from typing import Tuple
 from typing import List
+from copy   import copy
 
 import torch
 import torch.nn as nn
@@ -34,7 +35,7 @@ class ModelTrainer():
 		n_epochs       :int,
 		load_checkpoint:bool  = False,
 		val_X_Y        :Tuple[torch.Tensor, torch.Tensor] = None
-	) -> Tuple[np.ndarray, List[int]] | Tuple[np.ndarray, np.ndarray, List[int]]:
+	) -> Tuple[np.ndarray, List[Tuple[int, float]]] | Tuple[np.ndarray, np.ndarray, List[Tuple[int, float]]]:
 		checkpoint = {
 			'epoch'               : 0,
 			'model_state_dict'    : self.model.state_dict(),
@@ -50,7 +51,7 @@ class ModelTrainer():
 
 		curr_epoch = checkpoint['epoch']
 		best_loss  = checkpoint['loss']
-		# curr_loss  = checkpoint['loss']
+		curr_loss  = copy(checkpoint['loss'])
 
 		trn_loss_hist = np.zeros((n_epochs))
 		val_loss_hist = np.zeros((n_epochs))
@@ -60,17 +61,19 @@ class ModelTrainer():
 		if val_X_Y is not None:
 			val_X, val_Y = val_X_Y
 
+		prepare_chkpt:bool = False
+
 		for epoch in range(n_epochs):
 			for i, (X, Y) in tqdm(
 				enumerate(self.dataloader),
-				desc=f'Epoch [{curr_epoch+epoch+1}/{curr_epoch+n_epochs}] | Starting Loss ({curr_loss:.3e}): '
+				desc=f'E[{curr_epoch+epoch+1}/{curr_epoch+n_epochs}] | St Loss({curr_loss:.2e}): '
 			):
 				self.model.to(self.device)
 				self.model.train()
 				X = X.to(self.device)
 				Y = Y.to(self.device)
 
-				out = self.model(X)
+				out  = self.model(X)
 				loss = self.loss_func(out, Y)
 
 				self.optimizer.zero_grad()
@@ -78,35 +81,39 @@ class ModelTrainer():
 				self.optimizer.step()
 
 				curr_loss = loss.item()
-				trn_loss_hist[epoch] = curr_loss
-
-				if val_X_Y is not None:
-					self.model.eval()
-					X = val_X.to(self.device)
-					Y = val_Y.to(self.device)
-					out = self.model(X)
-					val_loss_hist[epoch] = self.loss_func(out, Y).item()
-
-					if val_loss_hist[epoch] < best_loss:
-						checkpoint['epoch'] = curr_epoch + epoch + 1
-						checkpoint['loss']  = val_loss_hist[epoch]
-						checkpoint['model_state_dict']     = self.model.state_dict()
-						checkpoint['optimizer_state_dict'] = self.optimizer.state_dict()
-						best_loss = val_loss_hist[epoch]
-						chckpt_hist.append(epoch)
-				else:
-					if trn_loss_hist[epoch] < best_loss:
-						checkpoint['epoch'] = curr_epoch + epoch + 1
-						checkpoint['loss']  = trn_loss_hist[epoch]
-						checkpoint['model_state_dict']     = self.model.state_dict()
-						checkpoint['optimizer_state_dict'] = self.optimizer.state_dict()
-						best_loss = trn_loss_hist[epoch]
-						chckpt_hist.append(epoch)
-				if self.save_ckpt:
-					torch.save(checkpoint, self.chekpoint_fnm)
 				continue
+			if val_X_Y is None:
+				self.model.eval()
+				X, Y = next(iter(self.dataloader))
+				X = X.to(self.device)
+				Y = Y.to(self.device)
+				out = self.model(X)
+
+				trn_loss_hist[epoch] = self.loss_func(out, Y).item()
+				if trn_loss_hist[epoch] < best_loss:
+					best_loss     = trn_loss_hist[epoch]
+					prepare_chkpt = True
+			else:
+				self.model.eval()
+				X = val_X.to(self.device)
+				Y = val_Y.to(self.device)
+				out = self.model(X)
+				val_loss_hist[epoch] = self.loss_func(out, Y).item()
+
+				if val_loss_hist[epoch] < best_loss:
+					best_loss     = val_loss_hist[epoch]
+					prepare_chkpt = True
+			if self.save_ckpt and prepare_chkpt:
+				prepare_chkpt = False
+				checkpoint[                'loss'] = best_loss
+				checkpoint[               'epoch'] = curr_epoch + epoch + 1
+				checkpoint[    'model_state_dict'] = self.model.state_dict()
+				checkpoint['optimizer_state_dict'] = self.optimizer.state_dict()
+				torch.save(checkpoint, self.chekpoint_fnm)
+				chckpt_hist.append((epoch, best_loss))
 			continue
 		print(f'Final train loss: {curr_loss:.3e}')
+		print(f'Final best loss : {best_loss:.3e}')
 
 		self.model.load_state_dict(checkpoint['model_state_dict'])
 		torch.save(self.model, self.saved_mdl_fnm)

@@ -3,8 +3,12 @@
 *.lnk
 
 desktop.ini
+
 */desktop.ini
+*/__pycache__
+
 */*/desktop.ini
 
 datasets/
 resources/
+saved_models/

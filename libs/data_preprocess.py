@@ -34,7 +34,8 @@ class MultiLenDataset(Dataset):
 			if len(x.shape) > 1:
 				feature_shape = x[0].shape
 		X_tensor = torch.zeros(self.max_f, *feature_shape)
+		st_i = self.max_f - len(x)
 		for i, feature in enumerate(x):
-			X_tensor[i] = feature
+			X_tensor[st_i+i] = feature
 
 		return X_tensor, self.Y[index]
