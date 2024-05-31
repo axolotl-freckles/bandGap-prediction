@@ -124,5 +124,5 @@ class ModelTrainer():
 		return trn_loss_hist, val_loss_hist, chckpt_hist
 	
 	def getLastCheckpoint(self) -> dict|None:
-		checkpoint = torch.load(self.chekpoint_fnm) if isFile(self.chekpoint_fnm) else None
+		checkpoint = torch.load(self.chekpoint_fnm) if isfile(self.chekpoint_fnm) else None
 		return checkpoint
