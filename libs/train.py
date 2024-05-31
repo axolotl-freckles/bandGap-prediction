@@ -1,6 +1,7 @@
-from typing import Tuple
-from typing import List
-from copy   import copy
+from typing  import Tuple
+from typing  import List
+from copy    import copy
+from os.path import isfile
 
 import torch
 import torch.nn as nn
@@ -33,8 +34,8 @@ class ModelTrainer():
 
 	def train(self,
 		n_epochs       :int,
-		load_checkpoint:bool  = False,
-		val_X_Y        :Tuple[torch.Tensor, torch.Tensor] = None
+		load_checkpoint:bool               = False,
+		val_X_Y        :th_data.DataLoader = None
 	) -> Tuple[np.ndarray, List[Tuple[int, float]]] | Tuple[np.ndarray, np.ndarray, List[Tuple[int, float]]]:
 		checkpoint = {
 			'epoch'               : 0,
@@ -59,7 +60,7 @@ class ModelTrainer():
 
 		val_X, val_Y = None, None
 		if val_X_Y is not None:
-			val_X, val_Y = val_X_Y
+			val_X, val_Y = next(iter(val_X_Y))
 
 		prepare_chkpt:bool = False
 
@@ -95,6 +96,7 @@ class ModelTrainer():
 					prepare_chkpt = True
 			else:
 				self.model.eval()
+				val_X, val_Y = next(iter(val_X_Y))
 				X = val_X.to(self.device)
 				Y = val_Y.to(self.device)
 				out = self.model(X)
@@ -115,8 +117,12 @@ class ModelTrainer():
 		print(f'Final train loss: {curr_loss:.3e}')
 		print(f'Final best loss : {best_loss:.3e}')
 
-		self.model.load_state_dict(checkpoint['model_state_dict'])
+		# self.model.load_state_dict(checkpoint['model_state_dict'])
 		torch.save(self.model, self.saved_mdl_fnm)
 		if val_X_Y is None:
 			return trn_loss_hist, chckpt_hist
 		return trn_loss_hist, val_loss_hist, chckpt_hist
+	
+	def getLastCheckpoint(self) -> dict|None:
+		checkpoint = torch.load(self.chekpoint_fnm) if isFile(self.chekpoint_fnm) else None
+		return checkpoint
