@@ -21,8 +21,8 @@ AVAILABLE_MODELS = {
 	'GRU'  : models.BG_GRU
 }
 
-MAX_EPOCHS = 500
-BATCH_SIZE =  64
+MAX_EPOCHS =  300
+BATCH_SIZE = 1024
 
 DATA_CSV       = './datasets/full/omdb_smile_data_set.csv'
 MODEL_DIR      = './saved_models'
@@ -35,9 +35,11 @@ def main(nargs:int, argv:list) -> int:
 	np.random .seed       (42)
 	picklename = f'{MODEL_DIR}/finished.pkl'
 	# Set[model_name:str]
-	finished_models = \
-		pickle.load(picklename)\
-		if os.path.isfile(picklename) else dict()
+	finished_models = set()
+	with open(picklename, 'rb') as picklefile:
+		finished_models = \
+			pickle.load(picklefile)\
+			if os.path.isfile(picklename) else set()
 	
 	device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
 	print(f'Training on "{torch.cuda.get_device_name(device)}"\n')
@@ -59,15 +61,15 @@ def main(nargs:int, argv:list) -> int:
 	train_set, val_set = trch_data.random_split(dataset, [train_split, val_split])
 	print(f'Dataset lenght: {dataset_len} [{train_split}, {val_split}]\n\n')
 
-	train_loader = DataLoader(train_set, BATCH_SIZE, shuffle=True)
-	val_loader   = DataLoader(  val_set, BATCH_SIZE, shuffle=True)
+	train_loader = DataLoader(train_set, BATCH_SIZE, shuffle=True, pin_memory=True)
+	val_loader   = DataLoader(  val_set, BATCH_SIZE, shuffle=True, pin_memory=True)
 
 	for name, config in configs.DEF_CONFIGS.items():
 		for model_name, model_clss in AVAILABLE_MODELS.items():
 			savename  = f'{model_name}_{name}'
 			model     = model_clss(config['h_size'], config['l_config'])
 			loss_fn   = nn.MSELoss()
-			optimizer = torch.optim.Adam(model.parameters(), lr=0.2)
+			optimizer = torch.optim.SGD(model.parameters(), lr=0.002)
 			trainer   = ModelTrainer(
 				savename, model, device, train_loader, loss_fn, optimizer,
 				save_checkpoint=True, out_dir=MODEL_DIR
@@ -77,10 +79,11 @@ def main(nargs:int, argv:list) -> int:
 				continue
 			print(f'\nTraining: {savename}')
 			train_hist, val_hist, _ = trainer.train(MAX_EPOCHS, load_checkpoint=False, val_X_Y=val_loader)
-			finished_models.add(savename)
 			np.save(f'{TRAIN_HIST_DIR}/{savename}_trHist.npy', train_hist)
 			np.save(f'{TRAIN_HIST_DIR}/{savename}_vlHist.npy', val_hist)
-			pickle.dump(picklename)
+			finished_models.add(savename)
+			with open(picklename, 'wb') as picklefile:
+				pickle.dump(finished_models, picklefile)
 			continue
 		continue
 

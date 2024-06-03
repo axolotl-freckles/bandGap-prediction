@@ -35,7 +35,8 @@ class ModelTrainer():
 	def train(self,
 		n_epochs       :int,
 		load_checkpoint:bool               = False,
-		val_X_Y        :th_data.DataLoader = None
+		val_X_Y        :th_data.DataLoader = None,
+		save_best      :bool               = True
 	) -> Tuple[np.ndarray, List[Tuple[int, float]]] | Tuple[np.ndarray, np.ndarray, List[Tuple[int, float]]]:
 		checkpoint = {
 			'epoch'               : 0,
@@ -117,7 +118,8 @@ class ModelTrainer():
 		print(f'Final train loss: {curr_loss:.3e}')
 		print(f'Final best loss : {best_loss:.3e}')
 
-		# self.model.load_state_dict(checkpoint['model_state_dict'])
+		if save_best:
+			self.model.load_state_dict(checkpoint['model_state_dict'])
 		torch.save(self.model, self.saved_mdl_fnm)
 		if val_X_Y is None:
 			return trn_loss_hist, chckpt_hist
