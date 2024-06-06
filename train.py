@@ -21,8 +21,9 @@ AVAILABLE_MODELS = {
 	'GRU'  : models.BG_GRU
 }
 
-MAX_EPOCHS =  300
+MAX_EPOCHS =  150
 BATCH_SIZE = 1024
+# BATCH_SIZE = 512
 
 DATA_CSV       = './datasets/full/omdb_smile_data_set.csv'
 MODEL_DIR      = './saved_models'
@@ -36,10 +37,11 @@ def main(nargs:int, argv:list) -> int:
 	picklename = f'{MODEL_DIR}/finished.pkl'
 	# Set[model_name:str]
 	finished_models = set()
-	with open(picklename, 'rb') as picklefile:
-		finished_models = \
-			pickle.load(picklefile)\
-			if os.path.isfile(picklename) else set()
+	if os.path.isfile(picklename):
+		with open(picklename, 'rb') as picklefile:
+			finished_models = \
+				pickle.load(picklefile)\
+				if os.path.isfile(picklename) else set()
 	
 	device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
 	print(f'Training on "{torch.cuda.get_device_name(device)}"\n')

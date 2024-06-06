@@ -68,7 +68,7 @@ class ModelTrainer():
 		for epoch in range(n_epochs):
 			for i, (X, Y) in tqdm(
 				enumerate(self.dataloader),
-				desc=f'E[{curr_epoch+epoch+1}/{curr_epoch+n_epochs}] | St Loss({curr_loss:.2e}): '
+				desc=f'E[{curr_epoch+epoch+1}/{curr_epoch+n_epochs}]|StLoss({curr_loss:.2e})'
 			):
 				self.model.to(self.device)
 				self.model.train()
@@ -84,14 +84,14 @@ class ModelTrainer():
 
 				curr_loss = loss.item()
 				continue
-			if val_X_Y is None:
-				self.model.eval()
-				X, Y = next(iter(self.dataloader))
-				X = X.to(self.device)
-				Y = Y.to(self.device)
-				out = self.model(X)
+			self.model.eval()
+			X, Y = next(iter(self.dataloader))
+			X = X.to(self.device)
+			Y = Y.to(self.device)
+			out = self.model(X)
 
-				trn_loss_hist[epoch] = self.loss_func(out, Y).item()
+			trn_loss_hist[epoch] = self.loss_func(out, Y).item()
+			if val_X_Y is None:
 				if trn_loss_hist[epoch] < best_loss:
 					best_loss     = trn_loss_hist[epoch]
 					prepare_chkpt = True
